@@ -1,9 +1,6 @@
 # FourSquare
 # Dynamic Group Planner
 
-## Timeline
-March 9 – April 4
-
 ## Overview
 A web-based group planning platform that integrates location discovery, real-time coordination, and scheduling. The system uses user history and group behavior to generate recommendations, while leveraging mapping and calendar services for end-to-end planning.
 
