@@ -1,50 +1,36 @@
-# FourSquare
-# Dynamic Group Planner
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## Overview
-A web-based group planning platform that integrates location discovery, real-time coordination, and scheduling. The system uses user history and group behavior to generate recommendations, while leveraging mapping and calendar services for end-to-end planning.
+## Getting Started
 
-## Tech Stack
-- Frontend: React.js / Next.js  
-- Backend: FastAPI or Express.js  
-- Database: Firebase or Supabase  
-- APIs: Google Places API, Google Maps API, Google Directions API  
+First, run the development server:
 
-## Core Features
-- Recommendation engine based on user history and group patterns  
-- Group creation, voting, and real-time coordination  
-- Live map visualization with geolocation and routing  
-- Calendar integration via `.ics` file generation  
-- Secure authentication with role-based access control  
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
+```
 
-## System Components
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-### Database
-- Schema for users, places, visits, and votes  
-- Stores geolocation and visit frequency  
-- Tracks prior recommendations to reduce repetition  
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-### Backend
-- REST API for authentication, group management, and voting  
-- Recommendation algorithm for discovery  
-- Real-time synchronization of user activity and dashboards  
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-### Frontend
-- Responsive dashboards for group tracking and activity  
-- Real-time updates for voting and recommendations  
-- Interactive UI for maps and place tracking  
+## Learn More
 
-### Integrations
-- Google Places API for location discovery  
-- Google Maps & Directions API for navigation and routing  
-- `.ics` generation for calendar syncing  
+To learn more about Next.js, take a look at the following resources:
 
-### Security
-- Role-based authentication (admin vs. user)  
-- Enforced HTTPS and secure data handling  
-- User privacy controls  
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-## Goals
-- Centralize group planning and discovery  
-- Enable real-time collaboration  
-- Build a scalable, data-driven recommendation system  
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
