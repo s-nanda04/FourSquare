@@ -29,6 +29,7 @@ export function PlaceCard({
         alt={place.name}
         width={400}
         height={200}
+        loading="eager"
         className="h-36 w-full object-cover"
       />
       <div className="space-y-3 p-4">

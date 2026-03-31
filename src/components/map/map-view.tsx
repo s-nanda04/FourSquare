@@ -1,6 +1,7 @@
 "use client";
 
-import { GoogleMap, LoadScript, MarkerF } from "@react-google-maps/api";
+import Script from "next/script";
+import { useEffect, useRef, useState } from "react";
 
 const center = { lat: 42.3601, lng: -71.0589 };
 const markers = [
@@ -11,6 +12,29 @@ const markers = [
 
 export function MapView() {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
+  const mapRef = useRef<HTMLDivElement | null>(null);
+  const [scriptLoaded, setScriptLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!apiKey) return;
+    if (!scriptLoaded) return;
+    if (!mapRef.current) return;
+    if (!window.google?.maps) return;
+
+    const map = new google.maps.Map(mapRef.current, {
+      center,
+      zoom: 12,
+      disableDefaultUI: true,
+      zoomControl: true,
+    });
+
+    for (const marker of markers) {
+      new google.maps.Marker({
+        map,
+        position: { lat: marker.lat, lng: marker.lng },
+      });
+    }
+  }, [apiKey, scriptLoaded]);
 
   if (!apiKey) {
     return (
@@ -22,13 +46,12 @@ export function MapView() {
 
   return (
     <div className="overflow-hidden rounded-xl">
-      <LoadScript googleMapsApiKey={apiKey}>
-        <GoogleMap mapContainerStyle={{ width: "100%", height: "380px" }} center={center} zoom={12}>
-          {markers.map((marker) => (
-            <MarkerF key={marker.id} position={{ lat: marker.lat, lng: marker.lng }} />
-          ))}
-        </GoogleMap>
-      </LoadScript>
+      <Script
+        src={`https://maps.googleapis.com/maps/api/js?key=${apiKey}`}
+        strategy="afterInteractive"
+        onLoad={() => setScriptLoaded(true)}
+      />
+      <div ref={mapRef} style={{ width: "100%", height: "380px" }} />
     </div>
   );
 }

@@ -20,7 +20,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-slate-900 p-4">
       <div className="w-full max-w-md space-y-4 rounded-xl bg-white p-6 shadow-sm">
         <div className="text-center">
-          <h1 className="text-2xl font-semibold text-slate-900">FourSquare</h1>
+          <h1 className="text-2xl font-bold" style={{ color: "#fa4779" }}>FourSquare</h1>
           <p className="text-sm text-slate-500">Plan together, move together.</p>
         </div>
 
@@ -28,11 +28,11 @@ export default function LoginPage() {
           <div className="space-y-3">
             <div className="space-y-2">
               <Label>Email</Label>
-              <Input type="email" />
+              <Input type="email" placeholder="name-example@gmail.com" />
             </div>
             <div className="space-y-2">
               <Label>Password</Label>
-              <Input type="password" />
+              <Input type="password" placeholder="password" />
             </div>
             <Link href="/dashboard">
               <Button className="w-full">Sign In</Button>

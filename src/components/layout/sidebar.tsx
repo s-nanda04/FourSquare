@@ -26,7 +26,7 @@ export function Sidebar() {
 
   return (
     <aside className="hidden w-64 shrink-0 border-r border-white/10 bg-slate-950/70 px-4 py-6 lg:flex lg:flex-col">
-      <h1 className="mb-8 text-xl font-semibold text-white">FourSquare</h1>
+      <h1 className="mb-8 text-xl font-bold" style={{ color: "#fa4779" }}>FourSquare</h1>
       <nav className="space-y-2">
         {links.map((link) => {
           const Icon = link.icon;
