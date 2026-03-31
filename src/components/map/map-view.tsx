@@ -1,6 +1,5 @@
 "use client";
 
-import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
 
 const center = { lat: 42.3601, lng: -71.0589 };
@@ -17,22 +16,27 @@ export function MapView() {
 
   useEffect(() => {
     if (!apiKey) return;
-    if (!scriptLoaded) return;
-    if (!mapRef.current) return;
-    if (!window.google?.maps) return;
+    if (document.querySelector('script[src*="maps.googleapis.com"]')) {
+      setScriptLoaded(true);
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}`;
+    script.async = true;
+    script.onload = () => setScriptLoaded(true);
+    document.head.appendChild(script);
+  }, [apiKey]);
 
+  useEffect(() => {
+    if (!apiKey || !scriptLoaded || !mapRef.current || !window.google?.maps) return;
     const map = new google.maps.Map(mapRef.current, {
       center,
       zoom: 12,
       disableDefaultUI: true,
       zoomControl: true,
     });
-
     for (const marker of markers) {
-      new google.maps.Marker({
-        map,
-        position: { lat: marker.lat, lng: marker.lng },
-      });
+      new google.maps.Marker({ map, position: { lat: marker.lat, lng: marker.lng } });
     }
   }, [apiKey, scriptLoaded]);
 
@@ -46,11 +50,6 @@ export function MapView() {
 
   return (
     <div className="overflow-hidden rounded-xl">
-      <Script
-        src={`https://maps.googleapis.com/maps/api/js?key=${apiKey}`}
-        strategy="afterInteractive"
-        onLoad={() => setScriptLoaded(true)}
-      />
       <div ref={mapRef} style={{ width: "100%", height: "380px" }} />
     </div>
   );

@@ -5,13 +5,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 export default function LoginPage() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
@@ -58,15 +51,13 @@ export default function LoginPage() {
             </div>
             <div className="space-y-2">
               <Label>Role</Label>
-              <Select defaultValue="member">
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="member">Member</SelectItem>
-                </SelectContent>
-              </Select>
+              <select
+                defaultValue="member"
+                className="h-8 w-full rounded-lg border border-gray-200 bg-transparent px-2.5 text-sm outline-none focus:border-ring"
+              >
+                <option value="admin">Admin</option>
+                <option value="member">Member</option>
+              </select>
             </div>
             <Button className="w-full">Create Account</Button>
           </div>
