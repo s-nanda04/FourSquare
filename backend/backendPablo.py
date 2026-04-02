@@ -21,7 +21,10 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -62,20 +65,6 @@ class CheckInRequest(BaseModel):
 # ─────────────────────────────────────────────────────────────────────────────
 # Helper
 # ─────────────────────────────────────────────────────────────────────────────
-def award_points(group_id: str, user_id: str, delta: int):
-    res = (
-        supabase.table("group_members")
-        .select("points")
-        .eq("group_id", group_id)
-        .eq("user_id", user_id)
-        .single()
-        .execute()
-    )
-    if res.data:
-        supabase.table("group_members").update(
-            {"points": res.data["points"] + delta}
-        ).eq("group_id", group_id).eq("user_id", user_id).execute()
-
 def require_membership(group_id: str, user_id: str):
     res = (
         supabase.table("group_members")
@@ -137,7 +126,7 @@ def get_dashboard(group_id: str, user=Depends(get_current_user)):
     # Members + profiles
     members_res = (
         supabase.table("group_members")
-        .select("points, profiles(display_name)")
+        .select("profiles(display_name)")
         .eq("group_id", group_id)
         .execute()
     )
@@ -145,13 +134,11 @@ def get_dashboard(group_id: str, user=Depends(get_current_user)):
         [
             {
                 "name": (m.get("profiles") or {}).get("display_name") or "Unknown",
-                "points": m["points"],
                 "online": False,
             }
             for m in (members_res.data or [])
         ],
-        key=lambda m: m["points"],
-        reverse=True,
+        key=lambda m: m["name"].lower(),
     )
 
     # Total check-ins for the group
@@ -200,19 +187,21 @@ def get_scoreboard(group_id: str, user=Depends(get_current_user)):
 
     members_res = (
         supabase.table("group_members")
-        .select("points, profiles(display_name)")
+        .select("profiles(display_name)")
         .eq("group_id", group_id)
-        .order("points", desc=True)
         .execute()
+    )
+    rows = sorted(
+        (members_res.data or []),
+        key=lambda m: ((m.get("profiles") or {}).get("display_name") or "").lower(),
     )
     return {
         "scoreboard": [
             {
                 "rank": i + 1,
                 "name": (m.get("profiles") or {}).get("display_name") or "Unknown",
-                "points": m["points"],
             }
-            for i, m in enumerate(members_res.data or [])
+            for i, m in enumerate(rows)
         ]
     }
 
@@ -232,8 +221,6 @@ def vote_for_place(req: PlaceVoteRequest, user=Depends(get_current_user)):
         },
         on_conflict="group_id,user_id,place_id",
     ).execute()
-
-    award_points(req.group_id, user.id, 5)
 
     votes_res = (
         supabase.table("votes")
@@ -268,8 +255,6 @@ def checkin(req: CheckInRequest, user=Depends(get_current_user)):
         supabase.table("places").update(
             {"visit_count_cache": place_res.data["visit_count_cache"] + 1}
         ).eq("id", req.place_id).execute()
-
-    award_points(req.group_id, user.id, 20)
 
     return {"message": "Checked in!"}
 
@@ -314,7 +299,11 @@ def discover_places(group_id: str, user=Depends(get_current_user)):
             continue
         vote_score = vote_scores.get(place["id"], 0) * 2
         novelty = random.uniform(0, 1)
-        place_type = (place.get("place_types") or {}).get("name", "Other")
+        pt = place.get("place_types")
+        if isinstance(pt, dict):
+            place_type = pt.get("name") or "Other"
+        else:
+            place_type = "Other"
         scored.append({
             "id": place["id"],
             "name": place["name"],

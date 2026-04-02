@@ -3,7 +3,7 @@ type CheckIn = {
   place: string;
   category: string;
   date: string;
-  note: string;
+  note?: string;
 };
 
 export function PlaceTimeline({ checkIns }: { checkIns: CheckIn[] }) {
@@ -21,7 +21,9 @@ export function PlaceTimeline({ checkIns }: { checkIns: CheckIn[] }) {
             <p className="text-xs text-slate-500">
               {checkIn.category} • {checkIn.date}
             </p>
-            <p className="text-sm text-slate-600">{checkIn.note}</p>
+            {checkIn.note ? (
+              <p className="text-sm text-slate-600">{checkIn.note}</p>
+            ) : null}
           </div>
         ))}
       </div>

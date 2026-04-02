@@ -1,24 +1,42 @@
 "use client";
 
 import { Slider } from "@/components/ui/slider";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { NativeSelect, SelectItem } from "@/components/ui/select";
+import type { DiscoverSortKey } from "@/lib/discover-sort";
 
 const categories = ["Food", "Events", "Activities", "Cafes"];
+
+const SORT_OPTIONS: { value: DiscoverSortKey; label: string }[] = [
+  { value: "distance", label: "Distance (nearest first)" },
+  { value: "price_low", label: "Price (low to high)" },
+  { value: "price_high", label: "Price (high to low)" },
+  { value: "stars_low", label: "Stars (low to high)" },
+  { value: "stars_high", label: "Stars (high to low)" },
+];
 
 export function FilterBar({
   selectedCategory,
   onCategoryChange,
   distance,
   onDistanceChange,
-  date,
-  onDateChange,
+  sortBy,
+  onSortChange,
+  distanceSubtext,
+  onRetryLocation,
+  locationStatus,
 }: {
   selectedCategory: string;
   onCategoryChange: (value: string) => void;
   distance: number;
   onDistanceChange: (value: number) => void;
-  date: string;
-  onDateChange: (value: string) => void;
+  sortBy: DiscoverSortKey;
+  onSortChange: (value: DiscoverSortKey) => void;
+  /** Explains how distance is applied (e.g. from GPS). */
+  distanceSubtext?: string;
+  onRetryLocation?: () => void;
+  locationStatus?: "loading" | "ok" | "denied" | "error" | "unsupported";
 }) {
   const handleSliderChange = (value: number | readonly number[]) => {
     if (typeof value === "number") {
@@ -47,7 +65,25 @@ export function FilterBar({
         ))}
       </div>
       <div className="space-y-2">
-        <p className="text-sm font-medium">Distance: {distance} miles</p>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <p className="text-sm font-medium text-slate-900">Distance: {distance} miles</p>
+            {distanceSubtext ? (
+              <p className="text-xs text-slate-600">{distanceSubtext}</p>
+            ) : null}
+          </div>
+          {locationStatus === "denied" || locationStatus === "error" ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0 border-slate-300 text-slate-900"
+              onClick={() => onRetryLocation?.()}
+            >
+              Use my location
+            </Button>
+          ) : null}
+        </div>
         <Slider
           value={[distance]}
           min={1}
@@ -56,7 +92,20 @@ export function FilterBar({
           onValueChange={handleSliderChange}
         />
       </div>
-      <Input type="date" value={date} onChange={(e) => onDateChange(e.target.value)} />
+      <div className="space-y-2">
+        <Label className="text-sm font-medium text-slate-900">Sort by</Label>
+        <NativeSelect
+          value={sortBy}
+          onValueChange={(v) => onSortChange(v as DiscoverSortKey)}
+          className="border-slate-300 bg-white text-slate-900"
+        >
+          {SORT_OPTIONS.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </SelectItem>
+          ))}
+        </NativeSelect>
+      </div>
     </div>
   );
 }

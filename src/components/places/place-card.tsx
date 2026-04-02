@@ -4,13 +4,19 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-type Place = {
-  id: number;
+export type PlaceCardPlace = {
+  id: string | number;
   name: string;
   category: string;
-  rating: number;
-  distance: string;
+  /** Optional star rating (e.g. 4.5). */
+  rating?: number;
+  /** Google Places price_level 0–4 (Free … $$$$). */
+  priceLevel?: number;
+  /** Short line for distance or address. */
+  distance?: string;
   image: string;
+  /** Extra line under title (e.g. formatted address). */
+  subtitle?: string;
 };
 
 export function PlaceCard({
@@ -18,10 +24,22 @@ export function PlaceCard({
   isSuggested,
   onSuggest,
 }: {
-  place: Place;
+  place: PlaceCardPlace;
   isSuggested?: boolean;
   onSuggest?: () => void;
 }) {
+  const priceLabel =
+    place.priceLevel != null && place.priceLevel >= 0 && place.priceLevel <= 4
+      ? ["Free", "$", "$$", "$$$", "$$$$"][place.priceLevel]
+      : null;
+  const detailLine = [
+    place.rating != null ? `${place.rating.toFixed(1)}★` : null,
+    priceLabel,
+    place.distance,
+  ]
+    .filter(Boolean)
+    .join(" • ");
+
   return (
     <div className="planner-card overflow-hidden">
       <Image
@@ -37,12 +55,15 @@ export function PlaceCard({
           <h3 className="font-semibold">{place.name}</h3>
           <Badge variant="secondary">{place.category}</Badge>
         </div>
+        {place.subtitle ? (
+          <p className="text-xs text-slate-500 line-clamp-2">{place.subtitle}</p>
+        ) : null}
         <p className="text-sm text-slate-600">
-          {place.rating} stars • {place.distance}
+          {detailLine || "—"}
         </p>
         {onSuggest ? (
-          <Button onClick={onSuggest} className="w-full">
-            {isSuggested ? "✓ Suggested" : "Suggest to Group"}
+          <Button type="button" onClick={onSuggest} className="w-full" disabled={isSuggested}>
+            {isSuggested ? "✓ Suggested to group" : "Suggest to Group"}
           </Button>
         ) : null}
       </div>

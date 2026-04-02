@@ -1,51 +1,238 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useMyPlaces } from "@/contexts/my-places-context";
+import type { MyPlaceCheckIn } from "@/contexts/my-places-context";
+import { getMapsApiKey, loadGoogleMapsApi } from "@/lib/maps";
+import { routeQueryFromTitle } from "@/lib/route-planner";
+import { usePlannerEvents } from "@/contexts/planner-events-context";
+import type { PlannerEventItem } from "@/contexts/planner-events-context";
 
-const center = { lat: 42.3601, lng: -71.0589 };
-const markers = [
-  { id: 1, lat: 42.3648, lng: -71.0547 },
-  { id: 2, lat: 42.3467, lng: -71.0972 },
-  { id: 3, lat: 42.3588, lng: -71.0678 },
-];
+const DEFAULT_CENTER = { lat: 42.3601, lng: -71.0589 };
 
-function getMapsApiKey(): string | undefined {
-  const a = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY?.trim();
-  const b = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim();
-  return a || b || undefined;
+/** Same de-dupe as Directions — one pin per distinct place name. */
+function uniquePlacesByName(checkIns: MyPlaceCheckIn[]): MyPlaceCheckIn[] {
+  const seen = new Set<string>();
+  const out: MyPlaceCheckIn[] = [];
+  for (const c of checkIns) {
+    const k = c.place.trim().toLowerCase();
+    if (!k || seen.has(k)) continue;
+    seen.add(k);
+    out.push(c);
+  }
+  return out;
+}
+
+const PIN_CALENDAR = "https://maps.google.com/mapfiles/ms/icons/red-dot.png";
+const PIN_MY_PLACE = "https://maps.google.com/mapfiles/ms/icons/blue-dot.png";
+
+type PendingPin =
+  | { kind: "calendar"; ev: PlannerEventItem; loc: google.maps.LatLng }
+  | { kind: "place"; ci: MyPlaceCheckIn; loc: google.maps.LatLng };
+
+type JitteredPin =
+  | { kind: "calendar"; ev: PlannerEventItem; lat: number; lng: number }
+  | { kind: "place"; ci: MyPlaceCheckIn; lat: number; lng: number };
+
+function escapeHtml(text: string): string {
+  return text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+/** Opens Google Maps at exact coordinates (same pin position on the embedded map). */
+function googleMapsUrlAt(lat: number, lng: number): string {
+  return `https://www.google.com/maps?q=${encodeURIComponent(`${lat},${lng}`)}`;
+}
+
+function geocodeAddress(
+  geocoder: google.maps.Geocoder,
+  address: string,
+): Promise<google.maps.LatLng | null> {
+  return new Promise((resolve) => {
+    geocoder.geocode({ address }, (results, status) => {
+      if (status === google.maps.GeocoderStatus.OK && results?.[0]) {
+        resolve(results[0].geometry.location);
+      } else {
+        resolve(null);
+      }
+    });
+  });
 }
 
 export function MapView() {
+  const { events } = usePlannerEvents();
+  const { checkIns } = useMyPlaces();
   const apiKey = getMapsApiKey();
   const mapRef = useRef<HTMLDivElement | null>(null);
+  const mapInstanceRef = useRef<google.maps.Map | null>(null);
+  const markersRef = useRef<google.maps.Marker[]>([]);
+  const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
+  const geocodeRunRef = useRef(0);
+  const mapClickListenerRef = useRef<google.maps.MapsEventListener | null>(null);
+
   const [scriptLoaded, setScriptLoaded] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
     if (!apiKey) return;
-    if (document.querySelector('script[src*="maps.googleapis.com"]')) {
-      setScriptLoaded(true);
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}`;
-    script.async = true;
-    script.onload = () => setScriptLoaded(true);
-    script.onerror = () => setScriptLoaded(false);
-    document.head.appendChild(script);
+    loadGoogleMapsApi()
+      .then(() => setScriptLoaded(true))
+      .catch(() => setScriptLoaded(false));
   }, [apiKey]);
 
   useEffect(() => {
     if (!apiKey || !scriptLoaded || !mapRef.current || !window.google?.maps) return;
     const map = new google.maps.Map(mapRef.current, {
-      center,
+      center: DEFAULT_CENTER,
       zoom: 12,
       disableDefaultUI: true,
       zoomControl: true,
     });
-    for (const marker of markers) {
-      new google.maps.Marker({ map, position: { lat: marker.lat, lng: marker.lng } });
+    mapInstanceRef.current = map;
+    if (!infoWindowRef.current) {
+      infoWindowRef.current = new google.maps.InfoWindow();
     }
+    mapClickListenerRef.current = map.addListener("click", () => {
+      infoWindowRef.current?.close();
+    });
+    setMapReady(true);
+    return () => {
+      mapClickListenerRef.current?.remove();
+      mapClickListenerRef.current = null;
+      markersRef.current.forEach((m) => m.setMap(null));
+      markersRef.current = [];
+      mapInstanceRef.current = null;
+      setMapReady(false);
+    };
   }, [apiKey, scriptLoaded]);
+
+  useEffect(() => {
+    if (!mapReady || !mapInstanceRef.current || !window.google?.maps) return;
+
+    const runId = ++geocodeRunRef.current;
+    const map = mapInstanceRef.current;
+    const geocoder = new google.maps.Geocoder();
+    const iw = infoWindowRef.current;
+
+    markersRef.current.forEach((m) => m.setMap(null));
+    markersRef.current = [];
+
+    const myPlaces = uniquePlacesByName(checkIns);
+    if (events.length === 0 && myPlaces.length === 0) {
+      map.setCenter(DEFAULT_CENTER);
+      map.setZoom(12);
+      return;
+    }
+
+    void (async () => {
+      const pending: PendingPin[] = [];
+
+      for (const ev of events) {
+        const query = routeQueryFromTitle(ev.title);
+        if (!query) continue;
+        const loc = await geocodeAddress(geocoder, `${query}, Boston, MA`);
+        if (runId !== geocodeRunRef.current) return;
+        if (loc) pending.push({ kind: "calendar", ev, loc });
+      }
+
+      for (const ci of myPlaces) {
+        const loc = await geocodeAddress(geocoder, `${ci.place.trim()}, Boston, MA`);
+        if (runId !== geocodeRunRef.current) return;
+        if (loc) pending.push({ kind: "place", ci, loc });
+      }
+
+      if (runId !== geocodeRunRef.current) return;
+
+      const byKey = new Map<string, PendingPin[]>();
+      for (const p of pending) {
+        const lat = p.loc.lat();
+        const lng = p.loc.lng();
+        const key = `${lat.toFixed(5)}_${lng.toFixed(5)}`;
+        if (!byKey.has(key)) byKey.set(key, []);
+        byKey.get(key)!.push(p);
+      }
+
+      const jittered: JitteredPin[] = [];
+      for (const bucket of byKey.values()) {
+        const n = bucket.length;
+        bucket.forEach((p, i) => {
+          const lat = p.loc.lat();
+          const lng = p.loc.lng();
+          if (n <= 1) {
+            if (p.kind === "calendar") {
+              jittered.push({ kind: "calendar", ev: p.ev, lat, lng });
+            } else {
+              jittered.push({ kind: "place", ci: p.ci, lat, lng });
+            }
+          } else {
+            const angle = (2 * Math.PI * i) / n;
+            const r = 0.00018;
+            const jLat = lat + r * Math.cos(angle);
+            const jLng = lng + r * Math.sin(angle);
+            if (p.kind === "calendar") {
+              jittered.push({ kind: "calendar", ev: p.ev, lat: jLat, lng: jLng });
+            } else {
+              jittered.push({ kind: "place", ci: p.ci, lat: jLat, lng: jLng });
+            }
+          }
+        });
+      }
+
+      if (runId !== geocodeRunRef.current) return;
+
+      if (jittered.length === 0) {
+        map.setCenter(DEFAULT_CENTER);
+        map.setZoom(12);
+        return;
+      }
+
+      const bounds = new google.maps.LatLngBounds();
+
+      for (const pin of jittered) {
+        const pos = { lat: pin.lat, lng: pin.lng };
+        const isCalendar = pin.kind === "calendar";
+        const title = isCalendar ? pin.ev.title : pin.ci.place;
+        const marker = new google.maps.Marker({
+          map,
+          position: pos,
+          title,
+          icon: isCalendar ? PIN_CALENDAR : PIN_MY_PLACE,
+          optimized: false,
+        });
+        marker.addListener("click", () => {
+          if (!iw) return;
+          const mapsUrl = googleMapsUrlAt(pin.lat, pin.lng);
+          if (isCalendar) {
+            iw.setContent(
+              `<div style="padding:4px 8px 6px;margin:0;max-width:min(260px,70vw);font-size:13px;line-height:1.3;font-family:system-ui,sans-serif;color:#0f172a">
+                <div style="margin:0 0 2px;padding:0;font-size:11px;font-weight:600;color:#64748b">Calendar</div>
+                <div style="margin:0 0 4px;padding:0">${escapeHtml(pin.ev.title)}</div>
+                <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" style="color:#2563eb;font-weight:600;text-decoration:underline;display:inline-block">Open in Google Maps</a>
+              </div>`,
+            );
+          } else {
+            const sub = `${escapeHtml(pin.ci.category)} · ${escapeHtml(pin.ci.date)}`;
+            iw.setContent(
+              `<div style="padding:4px 8px 6px;margin:0;max-width:min(260px,70vw);font-size:13px;line-height:1.3;font-family:system-ui,sans-serif;color:#0f172a">
+                <div style="margin:0 0 2px;padding:0;font-size:11px;font-weight:600;color:#64748b">My place</div>
+                <div style="margin:0 0 4px;padding:0;font-weight:600">${escapeHtml(pin.ci.place)}</div>
+                <div style="margin:0 0 4px;padding:0;font-size:12px;color:#64748b">${sub}</div>
+                <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" style="color:#2563eb;font-weight:600;text-decoration:underline;display:inline-block">Open in Google Maps</a>
+              </div>`,
+            );
+          }
+          iw.open(map, marker);
+        });
+        markersRef.current.push(marker);
+        bounds.extend(pos);
+      }
+
+      map.fitBounds(bounds);
+    })();
+  }, [events, checkIns, mapReady]);
 
   if (!apiKey) {
     return (
@@ -62,7 +249,7 @@ export function MapView() {
             >
               Google Cloud Console
             </a>
-            , enable <strong>Maps JavaScript API</strong>.
+            , enable <strong>Maps JavaScript API</strong> (Geocoding is included for the JS Geocoder).
           </li>
           <li>
             Create an API key (APIs &amp; Services → Credentials) and restrict it to your site (e.g.{" "}
@@ -83,15 +270,19 @@ export function MapView() {
 
   if (!scriptLoaded) {
     return (
-      <div className="planner-card flex h-[380px] items-center justify-center p-4 text-slate-600">
+      <div className="planner-card flex min-h-[min(60vh,480px)] flex-1 items-center justify-center p-4 text-slate-600">
         Loading map…
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-xl">
-      <div ref={mapRef} className="bg-slate-100" style={{ width: "100%", height: "380px" }} />
+    <div className="flex min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-sm">
+      <div
+        ref={mapRef}
+        className="min-h-[min(70vh,720px)] w-full flex-1"
+        style={{ minHeight: "min(70vh, 720px)" }}
+      />
     </div>
   );
 }

@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Map,
   MapPin,
+  User,
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ const links = [
   { href: "/group", icon: Users },
   { href: "/map", icon: Map },
   { href: "/calendar", icon: Calendar },
+  { href: "/profile", icon: User },
 ];
 
 export function BottomNav() {

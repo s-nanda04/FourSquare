@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Calendar,
+  ChevronRight,
   Compass,
   LayoutDashboard,
   Map,
@@ -48,10 +49,19 @@ export function Sidebar() {
           );
         })}
       </nav>
-      <div className="mt-auto rounded-lg bg-white/10 p-3 text-sm text-slate-200">
-        <p className="font-medium">{loading ? "…" : displayName ?? "Signed out"}</p>
-        <p className="text-xs text-slate-300">{roleLabel}</p>
-      </div>
+      <Link
+        href="/profile"
+        className={cn(
+          "mt-auto flex items-center justify-between gap-2 rounded-lg bg-white/10 p-3 text-sm text-slate-200 transition hover:bg-white/15",
+          pathname === "/profile" && "ring-1 ring-primary/60",
+        )}
+      >
+        <div className="min-w-0">
+          <p className="truncate font-medium">{loading ? "…" : displayName ?? "Signed out"}</p>
+          <p className="text-xs text-slate-300">{roleLabel}</p>
+        </div>
+        <ChevronRight size={18} className="shrink-0 text-slate-400" aria-hidden />
+      </Link>
     </aside>
   );
 }

@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { format, parseISO } from "date-fns";
+import { useEffect, useState } from "react";
+import { ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -13,20 +12,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { PlaceSuggestions } from "@/components/calendar/place-suggestions";
 
 type EventInput = {
   place: string;
   time: string;
-  note: string;
 };
-
-function formatSelectedLabel(isoDate: string) {
-  try {
-    return format(parseISO(isoDate), "MMM d, yyyy");
-  } catch {
-    return isoDate;
-  }
-}
 
 export function EventModal({
   selectedDate,
@@ -36,16 +27,22 @@ export function EventModal({
   onAddEvent: (date: string, event: EventInput) => void;
 }) {
   const [open, setOpen] = useState(false);
+  /** Date for the new event — defaults to the selected calendar day; change to book any day. */
+  const [eventDate, setEventDate] = useState(selectedDate);
   const [place, setPlace] = useState("");
   const [time, setTime] = useState("");
-  const [note, setNote] = useState("");
+  const [mapsUrl, setMapsUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) setEventDate(selectedDate);
+  }, [open, selectedDate]);
 
   const submit = () => {
-    if (!selectedDate || !place.trim() || !time) return;
-    onAddEvent(selectedDate, { place: place.trim(), time, note });
+    if (!eventDate || !place.trim() || !time) return;
+    onAddEvent(eventDate, { place: place.trim(), time });
     setPlace("");
     setTime("");
-    setNote("");
+    setMapsUrl(null);
     setOpen(false);
   };
 
@@ -54,19 +51,55 @@ export function EventModal({
       <DialogTrigger className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white">
         Add Event
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add event — {formatSelectedLabel(selectedDate)}</DialogTitle>
+          <DialogTitle>Add event</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
+          <div className="space-y-2">
+            <Label htmlFor="event-date">Date</Label>
+            <Input
+              id="event-date"
+              type="date"
+              value={eventDate}
+              onChange={(e) => setEventDate(e.target.value)}
+              className="text-slate-900"
+            />
+            <p className="text-xs text-slate-500">
+              Defaults to the day you clicked on the calendar; pick another date for a future event.
+            </p>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="event-place">Place</Label>
             <Input
               id="event-place"
               value={place}
-              onChange={(e) => setPlace(e.target.value)}
+              onChange={(e) => {
+                setPlace(e.target.value);
+                setMapsUrl(null);
+              }}
+              placeholder="Type a restaurant name…"
+              autoComplete="off"
               className="text-slate-900"
             />
+            <PlaceSuggestions
+              query={place}
+              onPick={({ title, mapsUrl: url }) => {
+                setPlace(title);
+                setMapsUrl(url);
+              }}
+            />
+            {mapsUrl ? (
+              <a
+                href={mapsUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-sm font-medium text-primary underline-offset-2 hover:underline"
+              >
+                <ExternalLink size={14} />
+                Open in Google Maps
+              </a>
+            ) : null}
           </div>
           <div className="space-y-2">
             <Label htmlFor="event-time">Time</Label>
@@ -75,15 +108,6 @@ export function EventModal({
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="text-slate-900"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="event-note">Note</Label>
-            <Textarea
-              id="event-note"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
               className="text-slate-900"
             />
           </div>

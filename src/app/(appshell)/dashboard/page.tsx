@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
+import { DashboardPlannerSection } from "@/components/dashboard/dashboard-planner-section";
+import { DashboardSidebarColumn } from "@/components/dashboard/dashboard-sidebar-column";
 import { PlaceCard } from "@/components/places/place-card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DashboardGroupProvider } from "@/contexts/dashboard-group-context";
 import { getFirstName } from "@/lib/auth/user-display";
 import { createClient } from "@/lib/supabase/server";
 
@@ -34,11 +37,6 @@ const recentPlaces = [
   },
 ];
 
-const members = [
-  { name: "Noah Kim", online: true, points: 105 },
-  { name: "Ava Chen", online: false, points: 94 },
-];
-
 export default async function DashboardPage() {
   const supabase = await createClient();
   const {
@@ -67,72 +65,23 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="planner-card p-4">
-        <h3 className="text-lg font-semibold">Welcome back, {welcomeName}</h3>
-        <p className="text-sm text-slate-600">Your group has 2 upcoming plans this week.</p>
-      </div>
+    <DashboardGroupProvider>
+      <div className="space-y-4">
+        <DashboardPlannerSection welcomeName={welcomeName} />
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="planner-card p-4">
-          <p className="text-sm text-slate-500">Upcoming Plans</p>
-          <p className="text-2xl font-semibold">2</p>
-        </div>
-        <div className="planner-card p-4">
-          <p className="text-sm text-slate-500">Members Online</p>
-          <p className="text-2xl font-semibold">3</p>
-        </div>
-        <div className="planner-card p-4">
-          <p className="text-sm text-slate-500">Recent Check-ins</p>
-          <p className="text-2xl font-semibold">8</p>
-        </div>
-        <div className="planner-card p-4">
-          <p className="text-sm text-slate-500">Top Voted Place</p>
-          <p className="text-xl font-semibold">Neptune Oyster</p>
-        </div>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="planner-card p-4 lg:col-span-2">
-          <h3 className="mb-3 font-semibold">Recently Suggested</h3>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {recentPlaces.map((place) => (
-              <PlaceCard key={place.id} place={place} />
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <div className="planner-card p-4">
-            <h3 className="mb-3 font-semibold">Your Group</h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div>
-                  <p className="text-sm font-medium">{getFirstName(user)} (you)</p>
-                  <p className="text-xs text-slate-500">Online</p>
-                </div>
-                <span className="text-sm font-semibold">— pts</span>
-              </div>
-              {members.map((member) => (
-                <div key={member.name} className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">{member.name}</p>
-                    <p className="text-xs text-slate-500">
-                      {member.online ? "Online" : "Offline"}
-                    </p>
-                  </div>
-                  <span className="text-sm font-semibold">{member.points} pts</span>
-                </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="planner-card p-4 lg:col-span-2">
+            <h3 className="mb-3 font-semibold">Recently Suggested</h3>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {recentPlaces.map((place) => (
+                <PlaceCard key={place.id} place={place} />
               ))}
             </div>
           </div>
-          <div className="planner-card p-4">
-            <h3 className="font-semibold">Target Tracker</h3>
-            <p className="mt-2 text-sm text-slate-600">Weekend challenge: 3 group check-ins.</p>
-            <p className="mt-2 font-semibold">Progress: 2 / 3</p>
-          </div>
+
+          <DashboardSidebarColumn />
         </div>
       </div>
-    </div>
+    </DashboardGroupProvider>
   );
 }

@@ -4,7 +4,7 @@ import { getSupabaseUrlAndKey } from "@/lib/supabase/env";
 
 function isProtectedPath(pathname: string) {
   if (pathname === "/") return false;
-  return ["/dashboard", "/places", "/map", "/group", "/discover", "/calendar"].some(
+  return ["/dashboard", "/places", "/map", "/group", "/discover", "/calendar", "/profile"].some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),
   );
 }

@@ -1,89 +1,116 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format, startOfMonth } from "date-fns";
-import { Button } from "@/components/ui/button";
 import { CalendarGrid } from "@/components/calendar/calendar-grid";
+import { EventEditDialog } from "@/components/calendar/event-edit-dialog";
 import { EventModal } from "@/components/calendar/event-modal";
 import { UpcomingEvents } from "@/components/calendar/upcoming-events";
+import {
+  usePlannerEvents,
+  type PlannerEventItem,
+} from "@/contexts/planner-events-context";
 
 type EventItem = { id: number; date: string; title: string };
 
-function downloadIcs(events: EventItem[]) {
-  const lines = [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//FourSquare//Planner//EN",
-    "CALSCALE:GREGORIAN",
-    ...events.flatMap((ev) => {
-      const d = ev.date.replaceAll("-", "");
-      return [
-        "BEGIN:VEVENT",
-        `UID:${ev.id}@foursquare.app`,
-        `DTSTAMP:${d}T120000Z`,
-        `DTSTART;VALUE=DATE:${d}`,
-        `SUMMARY:${ev.title.replace(/,/g, "\\,")}`,
-        "END:VEVENT",
-      ];
-    }),
-    "END:VCALENDAR",
-  ];
-  const blob = new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "foursquare-plans.ics";
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 export default function CalendarPage() {
-  const [cursorMonth, setCursorMonth] = useState(() => startOfMonth(new Date()));
-  const [selectedDate, setSelectedDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
-  const [events, setEvents] = useState<EventItem[]>([
-    { id: 1, date: "2026-03-10", title: "Dinner @ Trattoria - 7:00 PM" },
-    { id: 2, date: "2026-03-18", title: "Fenway Tour - 3:00 PM" },
-    { id: 3, date: "2026-03-24", title: "Coffee Meetup - 10:30 AM" },
-  ]);
+  const { events, setEvents } = usePlannerEvents();
+  /** Avoid `new Date()` in useState initializers — SSR (Node TZ) vs browser TZ can differ and break hydration. */
+  const [cursorMonth, setCursorMonth] = useState<Date | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
-  const eventMap: Record<string, string> = useMemo(() => {
-    const m: Record<string, string> = {};
+  useEffect(() => {
+    const now = new Date();
+    setSelectedDate(format(now, "yyyy-MM-dd"));
+    setCursorMonth(startOfMonth(now));
+  }, []);
+
+  const eventsByDate = useMemo(() => {
+    const m: Record<string, PlannerEventItem[]> = {};
     for (const event of events) {
-      m[event.date] = event.title;
+      if (!m[event.date]) m[event.date] = [];
+      m[event.date].push(event);
+    }
+    for (const k of Object.keys(m)) {
+      m[k].sort((a, b) => a.id - b.id);
     }
     return m;
   }, [events]);
 
+  const editingEvent = useMemo(
+    () => (editingId != null ? events.find((e) => e.id === editingId) ?? null : null),
+    [editingId, events],
+  );
+
   const addEvent = (date: string, event: { place: string; time: string }) => {
-    setEvents((current) => [
+    setEvents((current: EventItem[]) => [
       ...current,
       { id: Date.now(), date, title: `${event.place} - ${event.time}` },
     ]);
   };
 
+  const openEdit = (id: number) => {
+    setEditingId(id);
+    setEditOpen(true);
+  };
+
+  const saveEdit = (payload: { id: number; date: string; title: string }) => {
+    setEvents((prev) =>
+      prev.map((e) =>
+        e.id === payload.id ? { ...e, date: payload.date, title: payload.title } : e,
+      ),
+    );
+  };
+
+  const deleteEvent = (id: number) => {
+    setEvents((prev) => prev.filter((e) => e.id !== id));
+    if (editingId === id) {
+      setEditingId(null);
+      setEditOpen(false);
+    }
+  };
+
+  if (selectedDate == null || cursorMonth == null) {
+    return (
+      <div className="flex min-h-[calc(100dvh-6rem)] flex-col gap-4">
+        <div className="h-9 w-28 animate-pulse rounded-md bg-slate-200" />
+        <div className="min-h-[min(28rem,60vh)] flex-1 animate-pulse rounded-xl bg-slate-100" />
+      </div>
+    );
+  }
+
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <EventModal selectedDate={selectedDate} onAddEvent={addEvent} />
-          <Button
-            type="button"
-            variant="outline"
-            className="border-slate-300 bg-white text-slate-900 hover:bg-slate-50"
-            onClick={() => downloadIcs(events)}
-          >
-            Export .ics
-          </Button>
-        </div>
+    <div className="flex min-h-[calc(100dvh-5rem)] flex-col gap-4">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+        <EventModal selectedDate={selectedDate} onAddEvent={addEvent} />
+      </div>
+
+      <div className="min-h-0 w-full flex-1">
         <CalendarGrid
           month={cursorMonth}
           onMonthChange={setCursorMonth}
           selectedDate={selectedDate}
           onSelectDate={setSelectedDate}
-          eventsByDate={eventMap}
+          eventsByDate={eventsByDate}
+          onEditEvent={openEdit}
+          onDeleteEvent={deleteEvent}
         />
       </div>
-      <UpcomingEvents events={events} />
+
+      <UpcomingEvents events={events} onEdit={openEdit} onDelete={deleteEvent} />
+
+      <EventEditDialog
+        event={editingEvent}
+        open={editOpen}
+        onOpenChange={(o) => {
+          setEditOpen(o);
+          if (!o) setEditingId(null);
+        }}
+        onSave={saveEdit}
+        onDelete={deleteEvent}
+      />
     </div>
   );
 }

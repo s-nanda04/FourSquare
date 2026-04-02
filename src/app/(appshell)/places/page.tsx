@@ -1,43 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CheckInModal } from "@/components/places/check-in-modal";
+import { GroupSetupPanel } from "@/components/discover/group-setup-panel";
 import { PlaceTimeline } from "@/components/places/place-timeline";
+import { useMyPlaces } from "@/contexts/my-places-context";
+import { resolveGroupId } from "@/lib/discover-api";
 
 export default function PlacesPage() {
-  const [checkIns, setCheckIns] = useState([
-    {
-      id: 1,
-      place: "Neptune Oyster",
-      category: "Food",
-      date: "2026-03-20",
-      note: "Great seafood and quick service.",
-    },
-    {
-      id: 2,
-      place: "Boston Common",
-      category: "Activities",
-      date: "2026-03-18",
-      note: "Sunset walk with the group.",
-    },
-    {
-      id: 3,
-      place: "ICA Boston",
-      category: "Events",
-      date: "2026-03-14",
-      note: "Modern art exhibit was solid.",
-    },
-  ]);
+  const { checkIns, addCheckIn } = useMyPlaces();
 
-  const addCheckIn = (entry: { place: string; category: string; date: string }) => {
-    setCheckIns((current) => [
-      { id: Date.now(), note: "Added from planner.", ...entry },
-      ...current,
-    ]);
-  };
+  const [groupReady, setGroupReady] = useState(false);
+  const [hasGroup, setHasGroup] = useState(false);
+
+  const refreshGroup = useCallback(async () => {
+    const gid = await resolveGroupId();
+    setHasGroup(Boolean(gid));
+    setGroupReady(true);
+  }, []);
+
+  useEffect(() => {
+    void refreshGroup();
+  }, [refreshGroup]);
 
   return (
     <div className="space-y-4">
+      {!groupReady ? (
+        <div className="planner-card h-40 animate-pulse bg-slate-100 p-4" />
+      ) : hasGroup ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
+          You’re in a group — use <strong>Discover</strong> for group recommendations and voting.
+        </div>
+      ) : (
+        <GroupSetupPanel onChanged={() => void refreshGroup()} />
+      )}
+
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="planner-card p-4">
           <p className="text-sm text-slate-500">Total Check-ins</p>

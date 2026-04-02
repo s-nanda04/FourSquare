@@ -3,8 +3,8 @@
 import { Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-type VotePlace = {
-  id: number;
+export type VotePlace = {
+  id: string;
   name: string;
   votes: number;
 };
@@ -13,20 +13,27 @@ export function VotingPanel({
   places,
   myVotePlaceId,
   onVote,
+  title = "Group votes",
+  description = "You get one +1 vote — use + to pick or move your vote, − to clear it.",
+  emptyMessage = "No places to vote on yet.",
 }: {
   places: VotePlace[];
   /** Which place the current member voted for, or null if they have not voted yet. */
-  myVotePlaceId: number | null;
-  onVote: (placeId: number, direction: "up" | "down") => void;
+  myVotePlaceId: string | null;
+  onVote: (placeId: string, direction: "up" | "down") => void;
+  title?: string;
+  description?: string;
+  emptyMessage?: string;
 }) {
-  const topVote = Math.max(...places.map((place) => place.votes), 0);
+  const topVote = places.length > 0 ? Math.max(...places.map((place) => place.votes), 0) : 0;
 
   return (
     <div className="planner-card p-4">
-      <h3 className="mb-3 font-semibold">Voting Panel</h3>
-      <p className="mb-3 text-xs text-slate-500">
-        You get one vote. Use + to pick a place (or move your vote). Use − on your pick to remove it.
-      </p>
+      <h3 className="mb-3 font-semibold">{title}</h3>
+      <p className="mb-3 text-xs text-slate-500">{description}</p>
+      {places.length === 0 ? (
+        <p className="text-sm text-slate-600">{emptyMessage}</p>
+      ) : (
       <div className="space-y-3">
         {places.map((place) => {
           const isMyPick = myVotePlaceId === place.id;
@@ -91,6 +98,7 @@ export function VotingPanel({
           );
         })}
       </div>
+      )}
     </div>
   );
 }
