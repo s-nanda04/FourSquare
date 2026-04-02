@@ -23,7 +23,7 @@ export function Topbar() {
         <h2 className="text-2xl font-semibold text-white">{title}</h2>
       </div>
       <div className="flex items-center gap-3">
-        <Badge className="bg-primary text-white">Group: Boston Crew</Badge>
+        <Badge className="bg-primary text-white">Your group</Badge>
         <button className="rounded-lg bg-white/10 p-2 text-white">
           <Bell size={18} />
         </button>

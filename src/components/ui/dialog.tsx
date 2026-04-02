@@ -30,13 +30,23 @@ function Dialog({
   )
 }
 
-function DialogTrigger({ children, className, ...props }: React.HTMLAttributes<HTMLButtonElement>) {
+function DialogTrigger({
+  children,
+  className,
+  type = "button",
+  onClick,
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
   const { setOpen } = React.useContext(DialogContext)
   return (
     <button
       data-slot="dialog-trigger"
+      type={type}
       className={className}
-      onClick={() => setOpen(true)}
+      onClick={(e) => {
+        onClick?.(e)
+        if (!e.defaultPrevented) setOpen(true)
+      }}
       {...props}
     >
       {children}
@@ -89,10 +99,13 @@ function DialogContent({
       <DialogOverlay />
       <div
         data-slot="dialog-content"
+        role="dialog"
+        aria-modal="true"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-white p-4 text-sm shadow-xl sm:max-w-sm",
+          "fixed top-1/2 left-1/2 z-[51] grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-white p-4 text-sm text-slate-900 shadow-xl sm:max-w-sm",
           className
         )}
+        onClick={(e) => e.stopPropagation()}
       >
         {children}
         {showCloseButton && (

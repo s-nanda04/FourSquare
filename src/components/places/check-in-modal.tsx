@@ -11,13 +11,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 type NewCheckIn = {
   place: string;
@@ -26,54 +19,64 @@ type NewCheckIn = {
 };
 
 export function CheckInModal({ onAdd }: { onAdd: (entry: NewCheckIn) => void }) {
+  const [open, setOpen] = useState(false);
   const [place, setPlace] = useState("");
   const [category, setCategory] = useState("Food");
   const [date, setDate] = useState("");
 
   const handleSubmit = () => {
-    if (!place || !date) return;
-    onAdd({ place, category, date });
+    if (!place.trim() || !date) return;
+    onAdd({ place: place.trim(), category, date });
     setPlace("");
     setDate("");
     setCategory("Food");
+    setOpen(false);
   };
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white">
         + Check In
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Add Check-in</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Place Name</Label>
-            <Input value={place} onChange={(e) => setPlace(e.target.value)} />
+            <Label htmlFor="checkin-place">Place Name</Label>
+            <Input
+              id="checkin-place"
+              value={place}
+              onChange={(e) => setPlace(e.target.value)}
+              className="text-slate-900"
+            />
           </div>
           <div className="space-y-2">
-            <Label>Category</Label>
-            <Select
+            <Label htmlFor="checkin-category">Category</Label>
+            <select
+              id="checkin-category"
               value={category}
-              onValueChange={(value) => setCategory(value ?? "Food")}
+              onChange={(e) => setCategory(e.target.value)}
+              className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-900 outline-none focus:border-[#fa4779] focus:ring-1 focus:ring-[#fa4779]"
             >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Food">Food</SelectItem>
-                <SelectItem value="Events">Events</SelectItem>
-                <SelectItem value="Activities">Activities</SelectItem>
-                <SelectItem value="Cafes">Cafes</SelectItem>
-              </SelectContent>
-            </Select>
+              <option value="Food">Food</option>
+              <option value="Events">Events</option>
+              <option value="Activities">Activities</option>
+              <option value="Cafes">Cafes</option>
+            </select>
           </div>
           <div className="space-y-2">
-            <Label>Date</Label>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <Label htmlFor="checkin-date">Date</Label>
+            <Input
+              id="checkin-date"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="text-slate-900"
+            />
           </div>
-          <Button className="w-full" onClick={handleSubmit}>
+          <Button type="button" className="w-full" onClick={handleSubmit}>
             Save Check-in
           </Button>
         </div>

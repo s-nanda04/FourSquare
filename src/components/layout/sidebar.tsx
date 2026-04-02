@@ -10,6 +10,7 @@ import {
   MapPin,
   Users,
 } from "lucide-react";
+import { useUser } from "@/hooks/use-user";
 import { cn } from "@/lib/utils";
 
 const links = [
@@ -23,6 +24,7 @@ const links = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { displayName, loading, roleLabel } = useUser();
 
   return (
     <aside className="hidden w-64 shrink-0 border-r border-white/10 bg-slate-950/70 px-4 py-6 lg:flex lg:flex-col">
@@ -47,8 +49,8 @@ export function Sidebar() {
         })}
       </nav>
       <div className="mt-auto rounded-lg bg-white/10 p-3 text-sm text-slate-200">
-        <p className="font-medium">Shreya Patel</p>
-        <p className="text-xs text-slate-300">Admin</p>
+        <p className="font-medium">{loading ? "…" : displayName ?? "Signed out"}</p>
+        <p className="text-xs text-slate-300">{roleLabel}</p>
       </div>
     </aside>
   );

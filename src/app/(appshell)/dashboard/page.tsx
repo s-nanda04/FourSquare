@@ -1,5 +1,8 @@
+import { redirect } from "next/navigation";
 import { PlaceCard } from "@/components/places/place-card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getFirstName } from "@/lib/auth/user-display";
+import { createClient } from "@/lib/supabase/server";
 
 const recentPlaces = [
   {
@@ -32,12 +35,20 @@ const recentPlaces = [
 ];
 
 const members = [
-  { name: "Shreya Patel", online: true, points: 120 },
   { name: "Noah Kim", online: true, points: 105 },
   { name: "Ava Chen", online: false, points: 94 },
 ];
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  const welcomeName = getFirstName(user);
   const loading = false;
 
   if (loading) {
@@ -46,7 +57,9 @@ export default function DashboardPage() {
         {[1, 2, 3, 4].map((item) => (
           <div key={item} className="planner-card p-4">
             <Skeleton className="h-4 w-1/2" />
-            <Skeleton className="mt-3 h-8 w-1/3" />
+            <div className="mt-3 h-8 w-1/3">
+              <Skeleton className="h-full w-full" />
+            </div>
           </div>
         ))}
       </div>
@@ -56,7 +69,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-4">
       <div className="planner-card p-4">
-        <h3 className="text-lg font-semibold">Welcome back, Shreya</h3>
+        <h3 className="text-lg font-semibold">Welcome back, {welcomeName}</h3>
         <p className="text-sm text-slate-600">Your group has 2 upcoming plans this week.</p>
       </div>
 
@@ -93,6 +106,13 @@ export default function DashboardPage() {
           <div className="planner-card p-4">
             <h3 className="mb-3 font-semibold">Your Group</h3>
             <div className="space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <p className="text-sm font-medium">{getFirstName(user)} (you)</p>
+                  <p className="text-xs text-slate-500">Online</p>
+                </div>
+                <span className="text-sm font-semibold">— pts</span>
+              </div>
               {members.map((member) => (
                 <div key={member.name} className="flex items-center justify-between">
                   <div>
