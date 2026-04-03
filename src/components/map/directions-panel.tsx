@@ -156,13 +156,17 @@ export function DirectionsPanel() {
     let watchId: number | undefined;
     let liveTimer: ReturnType<typeof setInterval> | undefined;
 
+    /**
+     * Use your actual GPS (origin lat,lng) + the same destination string as the Directions API so the
+     * opened route matches in-app ETA. Avoids leg.end_location (road snap) changing the end pin vs your pick.
+     */
     function buildMapsUrl(
       origin: google.maps.LatLngLiteral,
-      end: google.maps.LatLng,
+      destinationAddress: string,
       mode: TravelModeUi,
     ): string {
       const o = encodeURIComponent(`${origin.lat},${origin.lng}`);
-      const d = encodeURIComponent(`${end.lat()},${end.lng()}`);
+      const d = encodeURIComponent(destinationAddress);
       const tm = mode === "driving" ? "driving" : "walking";
       return `https://www.google.com/maps/dir/?api=1&origin=${o}&destination=${d}&travelmode=${tm}`;
     }
@@ -180,8 +184,7 @@ export function DirectionsPanel() {
       } else {
         setStepsText(null);
       }
-      const end = leg.end_location;
-      setMapsUrl(buildMapsUrl(origin, end, mode));
+      setMapsUrl(buildMapsUrl(origin, routeDestination, mode));
       setUpdatedAt(new Date());
     }
 

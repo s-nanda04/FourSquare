@@ -141,12 +141,18 @@ export default function ProfilePage() {
           {saving ? "Saving…" : "Save changes"}
         </Button>
 
-        <LogoutButton
-          variant="outline"
-          showIcon={false}
-          label="Log out"
-          className="mt-3 w-full border-slate-300 text-base font-medium text-slate-900 hover:bg-slate-50"
-        />
+        <div className="mt-8 border-t border-slate-200 pt-6">
+          <h2 className="text-base font-semibold text-slate-900">Sign out</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            End your session on this device. You can sign in again anytime.
+          </p>
+          <LogoutButton
+            variant="destructive"
+            showIcon
+            label="Log out"
+            className="mt-4 h-10 w-full text-base font-semibold shadow-sm ring-1 ring-destructive/25"
+          />
+        </div>
       </div>
     </div>
   );
